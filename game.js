@@ -1,29 +1,33 @@
+// Get canvas and context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Player
+// Ensure full viewport
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Player object
 const player = { x: 100, y: 500, w: 30, h: 30, vy: 0, onGround: false, z: 0 };
 
-// Gravity & jump
+// Physics
 const gravity = 0.6;
 const jumpStrength = -12;
 
-// Key handling
+// Keys
 const keys = {};
 document.addEventListener('keydown', e => keys[e.key] = true);
 document.addEventListener('keyup', e => keys[e.key] = false);
 
-// Scroll to shift slices
+// Scroll wheel to move slices
 window.addEventListener('wheel', e => {
-  player.z += Math.sign(e.deltaY); // move z by ±1
+  player.z += Math.sign(e.deltaY);
   if (player.z < 0) player.z = 0;
-  if (player.z > 2) player.z = 2; // max slices
+  if (player.z > 2) player.z = 2;
 });
 
-// Define platforms with slice info
-// Each platform: x, y, width, height, z slice
+// Platforms: x, y, width, height, z slice
 const platforms = [
-  {x: 0, y: 580, w: 800, h: 20, z: 0},
+  {x: 0, y: canvas.height-20, w: canvas.width, h: 20, z: 0},
   {x: 200, y: 500, w: 100, h: 20, z: 0},
   {x: 400, y: 450, w: 150, h: 20, z: 1},
   {x: 150, y: 400, w: 100, h: 20, z: 1},
@@ -42,10 +46,58 @@ function update() {
     player.onGround = false;
   }
 
-  // Apply gravity
+  // Gravity
   player.vy += gravity;
   player.y += player.vy;
 
-  // Collision detection (only with current slice)
+  // Collision with platforms in current slice
   player.onGround = false;
-  platforms.forEach(p
+  platforms.forEach(p => {
+    if (p.z === player.z &&
+        player.x + player.w > p.x &&
+        player.x < p.x + p.w &&
+        player.y + player.h > p.y &&
+        player.y + player.h < p.y + p.h + player.vy) {
+      player.y = p.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  });
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+// Draw everything
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw platforms
+  platforms.forEach(p => {
+    if (p.z === player.z) {
+      ctx.fillStyle = '#0f0';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    } else {
+      ctx.fillStyle = 'rgba(0,255,0,0.1)'; // faint preview
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    }
+  });
+
+  // Draw player
+  ctx.fillStyle = '#ff0';
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // Slice info
+  ctx.fillStyle = '#fff';
+  ctx.font = '20px Arial';
+  ctx.fillText('Slice Z: ' + player.z, 10, 30);
+}
+
+// Start game loop
+update();
+
+// Optional: resize canvas when window resizes
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
