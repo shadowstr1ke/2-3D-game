@@ -1,4 +1,5 @@
-// Canvas setup
+document.addEventListener('DOMContentLoaded', () => {
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -26,7 +27,7 @@ document.addEventListener('keyup', e => keys[e.key] = false);
 window.addEventListener('wheel', e => {
     player.targetZ += Math.sign(e.deltaY);
     if (player.targetZ < 0) player.targetZ = 0;
-    if (player.targetZ > 2) player.targetZ = 2;
+    if (player.targetZ > 3) player.targetZ = 3;
 });
 
 // Reset button
@@ -38,13 +39,20 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     player.targetZ = startPos.z;
 });
 
-// Platforms (dynamic based on canvas height)
+// Platforms: each platform exists only on certain slice(s)
 let platforms = [
-    {x: 0, y: canvas.height - 20, w: canvas.width, h: 20, z: 0},
+    {x: 0, y: canvas.height - 20, w: canvas.width, h: 20, z: 0},   // floor slice 0
     {x: 200, y: canvas.height - 100, w: 100, h: 20, z: 0},
     {x: 400, y: canvas.height - 150, w: 150, h: 20, z: 1},
     {x: 150, y: canvas.height - 200, w: 100, h: 20, z: 1},
     {x: 350, y: canvas.height - 250, w: 200, h: 20, z: 2},
+    {x: 500, y: canvas.height - 300, w: 100, h: 20, z: 3}, // hidden path in slice 3
+];
+
+// Special items (collectibles) visible only in certain slices
+let items = [
+    {x: 420, y: canvas.height - 180, w: 20, h: 20, z: 1, collected: false},
+    {x: 520, y: canvas.height - 320, w: 20, h: 20, z: 3, collected: false},
 ];
 
 // Main game loop
@@ -80,16 +88,27 @@ function update() {
         }
     });
 
+    // Check item collection
+    items.forEach(it => {
+        if (!it.collected && Math.round(it.z) === Math.round(player.z) &&
+            player.x + player.w > it.x &&
+            player.x < it.x + it.w &&
+            player.y + player.h > it.y &&
+            player.y < it.y + it.h) {
+            it.collected = true;
+        }
+    });
+
     draw();
     requestAnimationFrame(update);
 }
 
-// Draw function
+// Draw everything
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw platforms
     platforms.forEach(p => {
-        // Scale platforms based on Z distance
         const dz = Math.abs(p.z - player.z);
         const scale = 1 - dz * 0.3;
         ctx.fillStyle = (Math.round(p.z) === Math.round(player.z)) ? '#0f0' : 'rgba(0,255,0,0.1)';
@@ -101,7 +120,15 @@ function draw() {
         );
     });
 
-    // Draw player with slight scaling based on fractional Z
+    // Draw items
+    items.forEach(it => {
+        if (!it.collected && Math.round(it.z) === Math.round(player.z)) {
+            ctx.fillStyle = '#0ff';
+            ctx.fillRect(it.x, it.y, it.w, it.h);
+        }
+    });
+
+    // Draw player with scaling
     const playerScale = 1 - (player.z - Math.floor(player.z)) * 0.2;
     ctx.fillStyle = '#ff0';
     ctx.fillRect(player.x, player.y, player.w * playerScale, player.h * playerScale);
@@ -113,3 +140,5 @@ function draw() {
 }
 
 update();
+
+}); // end DOMContentLoaded
