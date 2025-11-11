@@ -2,14 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Slice-Shift Platformer</title>
+<title>Slice-Shift Platformer Enhanced</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #111; }
+  body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
   canvas { display: block; width: 100vw; height: 100vh; background: #222; }
+  #resetBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    background: #ff5555;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+  }
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+<button id="resetBtn">Reset</button>
 <script type="module" src="game.js"></script>
 </body>
 </html>
