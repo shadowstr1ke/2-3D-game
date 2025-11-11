@@ -30,7 +30,7 @@ document.addEventListener('keyup', e => keys[e.key] = false);
 window.addEventListener('wheel', e => {
     player.targetZ += Math.sign(e.deltaY);
     if (player.targetZ < 0) player.targetZ = 0;
-    if (player.targetZ > 5) player.targetZ = 5;
+    if (player.targetZ > 5) player.targetZ = 5; // 6 slices
 });
 
 // Reset button
@@ -43,11 +43,13 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     items.forEach(it => it.collected = false);
 });
 
-// Platforms & hidden items
+// Platforms: 6 slices, ground for all, extra platforms
 let platforms = [];
 for (let z = 0; z <= 5; z++) {
     platforms.push({ x: 0, y: canvasHeight - 20, w: canvasWidth, h: 20, z }); // ground
 }
+
+// Extra platforms
 platforms.push({x: 200, y: canvasHeight - 100, w: 100, h: 20, z: 0});
 platforms.push({x: 400, y: canvasHeight - 150, w: 150, h: 20, z: 1});
 platforms.push({x: 150, y: canvasHeight - 200, w: 100, h: 20, z: 2});
@@ -55,13 +57,14 @@ platforms.push({x: 350, y: canvasHeight - 250, w: 200, h: 20, z: 3});
 platforms.push({x: 500, y: canvasHeight - 300, w: 100, h: 20, z: 4});
 platforms.push({x: 600, y: canvasHeight - 350, w: 120, h: 20, z: 5});
 
+// Items
 let items = [
     {x: 420, y: canvasHeight - 180, w: 20, h: 20, z: 1, collected: false},
     {x: 520, y: canvasHeight - 320, w: 20, h: 20, z: 4, collected: false},
     {x: 650, y: canvasHeight - 370, w: 20, h: 20, z: 5, collected: false}
 ];
 
-// Background parallax layers
+// Parallax background
 const bgLayers = [
     {color: '#111', speed: 0.1}, 
     {color: '#222', speed: 0.2}, 
@@ -116,11 +119,11 @@ function update() {
     requestAnimationFrame(update);
 }
 
-// Draw everything
+// Draw
 function draw() {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    // Draw parallax background
+    // Parallax background
     bgLayers.forEach(layer => {
         const offset = -player.x * layer.speed % canvasWidth;
         ctx.fillStyle = layer.color;
@@ -128,21 +131,23 @@ function draw() {
         if (offset < canvasWidth) ctx.fillRect(offset + canvasWidth, 0, canvasWidth, canvasHeight);
     });
 
-    // Draw platforms with ghost previews
-    platforms.forEach(p => {
-        const dz = Math.abs(p.z - player.z);
-        const scale = 1 - dz * 0.3;
-        let opacity = (Math.round(p.z) === Math.round(player.z)) ? 1 : 0.05; // faint previews
-        ctx.fillStyle = `rgba(0,255,0,${opacity})`;
-        ctx.fillRect(
-            p.x + (1 - scale) * canvasWidth/2,
-            p.y + (1 - scale) * canvasHeight/2,
-            p.w * scale,
-            p.h * scale
-        );
-    });
+    // Draw platforms (ghost previews for all slices)
+    for (let z = 0; z <= 5; z++) {
+        platforms.filter(p => p.z === z).forEach(p => {
+            const dz = Math.abs(z - player.z);
+            const scale = 1 - dz * 0.3;
+            const opacity = (Math.round(z) === Math.round(player.z)) ? 1 : 0.05; // ghost preview
+            ctx.fillStyle = `rgba(0,255,0,${opacity})`;
+            ctx.fillRect(
+                p.x + (1 - scale) * canvasWidth/2,
+                p.y + (1 - scale) * canvasHeight/2,
+                p.w * scale,
+                p.h * scale
+            );
+        });
+    }
 
-    // Draw items
+    // Items
     items.forEach(it => {
         if (!it.collected && Math.round(it.z) === Math.round(player.z)) {
             ctx.fillStyle = '#0ff';
@@ -150,7 +155,7 @@ function draw() {
         }
     });
 
-    // Draw player
+    // Player
     const playerScale = 1 - (player.z - Math.floor(player.z)) * 0.2;
     ctx.fillStyle = '#ff0';
     ctx.fillRect(player.x, player.y, player.w * playerScale, player.h * playerScale);
