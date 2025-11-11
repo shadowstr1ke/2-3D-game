@@ -1,57 +1,51 @@
-// Using Three.js for a pseudo-2D platformer in a 3D world
-// Player moves in X (left/right), Y (up/down) and scroll moves Z
-
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js';
-
-// Scene setup
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
 // Player
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const player = new THREE.Mesh(geometry, material);
-scene.add(player);
+const player = { x: 100, y: 500, w: 30, h: 30, vy: 0, onGround: false, z: 0 };
 
-player.position.set(0, 0, 0);
+// Gravity & jump
+const gravity = 0.6;
+const jumpStrength = -12;
 
-// Floor
-const floorGeo = new THREE.BoxGeometry(50, 1, 50);
-const floorMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.position.set(0, -1, 0);
-scene.add(floor);
-
-camera.position.set(0, 5, 10);
-camera.lookAt(player.position);
-
-// Controls
+// Key handling
 const keys = {};
-document.addEventListener('keydown', (e) => { keys[e.key] = true; });
-document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
 
-// Scroll moves player in Z
-window.addEventListener('wheel', (e) => {
-    player.position.z += e.deltaY * 0.01; // scroll speed
+// Scroll to shift slices
+window.addEventListener('wheel', e => {
+  player.z += Math.sign(e.deltaY); // move z by ±1
+  if (player.z < 0) player.z = 0;
+  if (player.z > 2) player.z = 2; // max slices
 });
 
-function animate() {
-    requestAnimationFrame(animate);
+// Define platforms with slice info
+// Each platform: x, y, width, height, z slice
+const platforms = [
+  {x: 0, y: 580, w: 800, h: 20, z: 0},
+  {x: 200, y: 500, w: 100, h: 20, z: 0},
+  {x: 400, y: 450, w: 150, h: 20, z: 1},
+  {x: 150, y: 400, w: 100, h: 20, z: 1},
+  {x: 350, y: 350, w: 200, h: 20, z: 2},
+];
 
-    // Basic movement X/Y
-    if (keys['ArrowLeft']) player.position.x -= 0.1;
-    if (keys['ArrowRight']) player.position.x += 0.1;
-    if (keys['ArrowUp']) player.position.y += 0.1;
-    if (keys['ArrowDown']) player.position.y -= 0.1;
+// Main game loop
+function update() {
+  // Horizontal movement
+  if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
+  if (keys['ArrowRight'] || keys['d']) player.x += 5;
 
-    camera.position.z = player.position.z + 10; // follow player in Z
-    camera.position.x = player.position.x;
-    camera.lookAt(player.position);
+  // Jump
+  if ((keys['ArrowUp'] || keys['w'] || keys[' ']) && player.onGround) {
+    player.vy = jumpStrength;
+    player.onGround = false;
+  }
 
-    renderer.render(scene, camera);
-}
-animate();
+  // Apply gravity
+  player.vy += gravity;
+  player.y += player.vy;
 
+  // Collision detection (only with current slice)
+  player.onGround = false;
+  platforms.forEach(p
