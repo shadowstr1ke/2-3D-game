@@ -1,7 +1,7 @@
 // Using Three.js for a pseudo-2D platformer in a 3D world
 // Player moves in X (left/right), Y (up/down) and scroll moves Z
 
-import * as THREE from 'three';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.module.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -54,3 +54,4 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+
