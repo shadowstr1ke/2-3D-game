@@ -1,8 +1,7 @@
-// Get canvas and context
+// Canvas setup
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Resize canvas to fill viewport
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -11,15 +10,8 @@ resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 // Player
-const player = { 
-    x: 100, 
-    y: canvas.height - 60, // start 60px above bottom
-    w: 30, 
-    h: 30, 
-    vy: 0, 
-    onGround: false, 
-    z: 0 
-};
+const startPos = { x: 100, y: canvas.height - 60, z: 0 };
+const player = { ...startPos, w: 30, h: 30, vy: 0, onGround: false, targetZ: 0 };
 
 // Gravity & jump
 const gravity = 0.6;
@@ -32,9 +24,18 @@ document.addEventListener('keyup', e => keys[e.key] = false);
 
 // Scroll to shift slices
 window.addEventListener('wheel', e => {
-    player.z += Math.sign(e.deltaY);
-    if (player.z < 0) player.z = 0;
-    if (player.z > 2) player.z = 2;
+    player.targetZ += Math.sign(e.deltaY);
+    if (player.targetZ < 0) player.targetZ = 0;
+    if (player.targetZ > 2) player.targetZ = 2;
+});
+
+// Reset button
+document.getElementById('resetBtn').addEventListener('click', () => {
+    player.x = startPos.x;
+    player.y = startPos.y;
+    player.vy = 0;
+    player.z = startPos.z;
+    player.targetZ = startPos.z;
 });
 
 // Platforms (dynamic based on canvas height)
@@ -46,8 +47,11 @@ let platforms = [
     {x: 350, y: canvas.height - 250, w: 200, h: 20, z: 2},
 ];
 
-// Update function
+// Main game loop
 function update() {
+    // Smooth Z transition
+    player.z += (player.targetZ - player.z) * 0.1;
+
     // Horizontal movement
     if (keys['ArrowLeft'] || keys['a']) player.x -= 5;
     if (keys['ArrowRight'] || keys['d']) player.x += 5;
@@ -58,14 +62,14 @@ function update() {
         player.onGround = false;
     }
 
-    // Apply gravity
+    // Gravity
     player.vy += gravity;
     player.y += player.vy;
 
-    // Collision detection (current slice only)
+    // Collision detection (closest slice)
     player.onGround = false;
     platforms.forEach(p => {
-        if (p.z === player.z &&
+        if (Math.round(p.z) === Math.round(player.z) &&
             player.x + player.w > p.x &&
             player.x < p.x + p.w &&
             player.y + player.h > p.y &&
@@ -84,26 +88,28 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw platforms
     platforms.forEach(p => {
-        if (p.z === player.z) {
-            ctx.fillStyle = '#0f0';
-            ctx.fillRect(p.x, p.y, p.w, p.h);
-        } else {
-            ctx.fillStyle = 'rgba(0,255,0,0.1)'; // faint preview
-            ctx.fillRect(p.x, p.y, p.w, p.h);
-        }
+        // Scale platforms based on Z distance
+        const dz = Math.abs(p.z - player.z);
+        const scale = 1 - dz * 0.3;
+        ctx.fillStyle = (Math.round(p.z) === Math.round(player.z)) ? '#0f0' : 'rgba(0,255,0,0.1)';
+        ctx.fillRect(
+            p.x + (1 - scale) * canvas.width/2,
+            p.y + (1 - scale) * canvas.height/2,
+            p.w * scale,
+            p.h * scale
+        );
     });
 
-    // Draw player
+    // Draw player with slight scaling based on fractional Z
+    const playerScale = 1 - (player.z - Math.floor(player.z)) * 0.2;
     ctx.fillStyle = '#ff0';
-    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.fillRect(player.x, player.y, player.w * playerScale, player.h * playerScale);
 
     // Slice info
     ctx.fillStyle = '#fff';
     ctx.font = '20px Arial';
-    ctx.fillText('Slice Z: ' + player.z, 10, 30);
+    ctx.fillText('Slice Z: ' + player.z.toFixed(2), 10, 30);
 }
 
-// Start game
 update();
