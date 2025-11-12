@@ -2,26 +2,186 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Slice-Shift Platformer Ghost Preview</title>
+<title>2D Slice Minecraft</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #111; font-family: sans-serif; }
-  canvas { display: block; width: 100vw; height: 100vh; background: #222; }
-  #resetBtn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    padding: 8px 12px;
-    background: #ff5555;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-  }
+  body { margin:0; overflow:hidden; background:lightblue; }
+  canvas { display:block; margin:0 auto; background:lightblue; }
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
-<button id="resetBtn">Reset</button>
-<script type="module" src="game.js"></script>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// BLOCK SIZE
+const BLOCK = 16;
+const PLAYER_WIDTH = 16;
+const PLAYER_HEIGHT = 30; // 2 blocks tall ~30px
+
+// WORLD SETTINGS
+const CHUNK_WIDTH = 16;
+const CHUNK_HEIGHT = 16;
+const NUM_SLICES = 16;
+
+// COLORS
+const COLORS = {
+  grass: "#00AA00",
+  dirt: "#654321",
+  stone: "#777777",
+  leaves: "#99FF99",
+  wood: "#D2A679",
+  water: "#3399FF",
+  sky: "#ADD8E6",
+  cave: "#000000"
+};
+
+// WORLD DATA
+let world = [];
+
+// PLAYER
+let player = {
+  x: 8 * BLOCK,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  speed: 2,
+  onGround: false
+};
+
+let currentSlice = 1; // 1–16
+
+// INPUT
+let keys = {};
+
+// GRAVITY
+const GRAVITY = 0.5;
+const FRICTION = 0.8;
+
+// Initialize world with slices
+for(let z=0; z<NUM_SLICES; z++){
+  let slice = [];
+  for(let x=0; x<CHUNK_WIDTH; x++){
+    let column = [];
+    let groundHeight = Math.floor(Math.random() * 5) + 8; // random terrain height
+    for(let y=0; y<CHUNK_HEIGHT; y++){
+      if(y > groundHeight) column.push("stone");
+      else if(y === groundHeight) column.push("grass");
+      else if(y === groundHeight-1) column.push("dirt");
+      else column.push("air");
+    }
+    // add water sometimes
+    if(Math.random()<0.1) column[groundHeight] = "water";
+
+    // add trees
+    if(Math.random()<0.3){
+      let treeBase = groundHeight-1;
+      if(treeBase>=2){
+        column[treeBase] = "wood";
+        column[treeBase-1] = "wood";
+        column[treeBase-2] = "leaves";
+      }
+    }
+
+    slice.push(column);
+  }
+  world.push(slice);
+}
+
+// COLLISION CHECK
+function isSolid(x, y, z){
+  if(z<1 || z>NUM_SLICES) return false;
+  let slice = world[z-1];
+  if(x<0 || x>=CHUNK_WIDTH) return false;
+  if(y<0 || y>=CHUNK_HEIGHT) return false;
+  let block = slice[x][y];
+  return block !== "air" && block !== "water" && block !== "leaves";
+}
+
+// DRAW FUNCTION
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw current slice
+  let slice = world[currentSlice-1];
+  for(let x=0; x<CHUNK_WIDTH; x++){
+    for(let y=0; y<CHUNK_HEIGHT; y++){
+      let block = slice[x][y];
+      if(block !== "air"){
+        ctx.fillStyle = COLORS[block] || COLORS.sky;
+        ctx.fillRect(x*BLOCK, canvas.height - (y+1)*BLOCK, BLOCK, BLOCK);
+      }
+    }
+  }
+
+  // Draw player
+  ctx.fillStyle = "tan";
+  ctx.fillRect(player.x, player.y, PLAYER_WIDTH, PLAYER_HEIGHT/2);
+  ctx.fillStyle = "teal";
+  ctx.fillRect(player.x, player.y+PLAYER_HEIGHT/2, PLAYER_WIDTH, PLAYER_HEIGHT/2);
+}
+
+// UPDATE FUNCTION
+function update(){
+  // Horizontal movement
+  if(keys["ArrowRight"]) player.vx = player.speed;
+  else if(keys["ArrowLeft"]) player.vx = -player.speed;
+  else player.vx = 0;
+
+  // Vertical slice scroll (z-axis)
+  if(keys["ArrowUp"]) currentSlice = Math.min(currentSlice+1, NUM_SLICES);
+  if(keys["ArrowDown"]) currentSlice = Math.max(currentSlice-1, 1);
+
+  // Gravity
+  player.vy += GRAVITY;
+
+  // Collision X
+  let nextX = player.x + player.vx;
+  if(!isSolid(Math.floor(nextX/BLOCK), Math.floor(player.y/BLOCK), currentSlice) &&
+     !isSolid(Math.floor((nextX+PLAYER_WIDTH)/BLOCK), Math.floor(player.y/BLOCK), currentSlice) &&
+     !isSolid(Math.floor(nextX/BLOCK), Math.floor((player.y+PLAYER_HEIGHT)/BLOCK), currentSlice) &&
+     !isSolid(Math.floor((nextX+PLAYER_WIDTH)/BLOCK), Math.floor((player.y+PLAYER_HEIGHT)/BLOCK), currentSlice)
+     ){
+    player.x = nextX;
+  }
+
+  // Collision Y
+  let nextY = player.y + player.vy;
+  if(!isSolid(Math.floor(player.x/BLOCK), Math.floor(nextY/BLOCK), currentSlice) &&
+     !isSolid(Math.floor((player.x+PLAYER_WIDTH)/BLOCK), Math.floor(nextY/BLOCK), currentSlice) &&
+     !isSolid(Math.floor(player.x/BLOCK), Math.floor((nextY+PLAYER_HEIGHT)/BLOCK), currentSlice) &&
+     !isSolid(Math.floor((player.x+PLAYER_WIDTH)/BLOCK), Math.floor((nextY+PLAYER_HEIGHT)/BLOCK), currentSlice)
+     ){
+    player.y = nextY;
+    player.onGround = false;
+  } else {
+    if(player.vy > 0) player.onGround = true;
+    player.vy = 0;
+  }
+
+  // Respawn if falls below screen
+  if(player.y > canvas.height){
+    player.x = 8 * BLOCK;
+    player.y = 0;
+    player.vx = 0;
+    player.vy = 0;
+  }
+}
+
+// INPUT EVENTS
+document.addEventListener("keydown", e => { keys[e.key] = true; });
+document.addEventListener("keyup", e => { keys[e.key] = false; });
+
+// GAME LOOP
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
 </body>
 </html>
